@@ -1,0 +1,13 @@
+{
+  "name": "classwork-scheduler",
+  "version": "1.0.0",
+  "description": "Class Work Scheduler - Academic Task Management & Student Completion System",
+  "main": "backend/src/server.js",
+  "scripts": {
+    "build": "npm --prefix frontend install && npm --prefix frontend run build && npm --prefix backend install",
+    "start": "node backend/src/server.js",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "test:e2e": "node backend/test-e2e.js"
+  }
+}
