@@ -3,13 +3,13 @@ import { X, Calendar, Layers, Tag, User, BookOpen, AlertCircle, Sparkles, Link }
 import { api } from '../services/api';
 
 export default function AdminTaskModal({ isOpen, onClose, onSave, editingWork }) {
-  const [availableSections, setAvailableSections] = useState(['CSE-A']);
+  const [availableSections, setAvailableSections] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     subject: '',
     faculty_name: '',
     description: '',
-    target_section: 'CSE-A',
+    target_section: '',
     category: 'Assignment',
     priority: 'Medium',
     due_date: '',
@@ -23,6 +23,11 @@ export default function AdminTaskModal({ isOpen, onClose, onSave, editingWork })
     api.getSections().then((res) => {
       if (res.sections && res.sections.length > 0) {
         setAvailableSections(res.sections);
+        // Only set default section if not editing and target_section is empty
+        setFormData((prev) => ({
+          ...prev,
+          target_section: prev.target_section || res.sections[0],
+        }));
       }
     }).catch(() => {});
   }, []);
@@ -34,7 +39,7 @@ export default function AdminTaskModal({ isOpen, onClose, onSave, editingWork })
         subject: editingWork.subject || '',
         faculty_name: editingWork.faculty_name || '',
         description: editingWork.description || '',
-        target_section: editingWork.target_section || 'CSE-A',
+        target_section: editingWork.target_section || '',
         category: editingWork.category || 'Assignment',
         priority: editingWork.priority || 'Medium',
         due_date: editingWork.due_date ? editingWork.due_date.slice(0, 16) : '',
@@ -45,17 +50,17 @@ export default function AdminTaskModal({ isOpen, onClose, onSave, editingWork })
       const d = new Date();
       d.setDate(d.getDate() + 3);
       d.setHours(17, 0, 0, 0);
-      setFormData({
+      setFormData((prev) => ({
         title: '',
         subject: '',
         faculty_name: '',
         description: '',
-        target_section: 'CSE-A',
+        target_section: prev.target_section || availableSections[0] || '',
         category: 'Assignment',
         priority: 'Medium',
         due_date: d.toISOString().slice(0, 16),
         resource_url: '',
-      });
+      }));
     }
     setError('');
   }, [editingWork, isOpen]);

@@ -3,11 +3,11 @@ import { Calendar, UserPlus, ArrowLeft, AlertCircle, CheckCircle2, Layers } from
 import { api, authStorage } from '../services/api';
 
 export default function RegisterPage({ onRegisterSuccess, onNavigateLogin }) {
-  const [sections, setSections] = useState(['CSE-A']);
+  const [sections, setSections] = useState([]);
   const [formData, setFormData] = useState({
     roll_number: '',
     name: '',
-    section: 'CSE-A',
+    section: '',
     year: '3',
     department: 'Computer Science & Engineering',
     password: '',

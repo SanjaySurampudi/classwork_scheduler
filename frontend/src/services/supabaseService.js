@@ -140,7 +140,236 @@ export const supabaseService = {
   },
 
   getSections: async () => {
-    return { sections: ['CSE-A'], default_section: 'CSE-A' };
+    if (!isSupabaseConfigured) return { sections: [], default_section: '' };
+
+    let sectionsList = [];
+    let fromTable = false;
+
+    try {
+      const { data, error } = await supabase.from('sections').select('*').order('name', { ascending: true });
+      if (!error && data && data.length > 0) {
+        sectionsList = data.map((s) => s.name.toUpperCase());
+        fromTable = true;
+      }
+    } catch {
+      // Table doesn't exist yet in Supabase
+    }
+
+    if (!fromTable) {
+      // Collect from users and classworks (no hardcoded default)
+      const found = new Set();
+      try {
+        const [uRes, cRes] = await Promise.all([
+          supabase.from('users').select('section'),
+          supabase.from('classworks').select('target_section'),
+        ]);
+
+        (uRes.data || []).forEach((u) => {
+          if (u.section && u.section !== 'ALL') found.add(u.section.toUpperCase());
+        });
+        (cRes.data || []).forEach((c) => {
+          if (c.target_section && c.target_section !== 'ALL') found.add(c.target_section.toUpperCase());
+        });
+      } catch {}
+
+      try {
+        const local = JSON.parse(localStorage.getItem('classwork_sections') || '[]');
+        local.forEach((s) => found.add(s.toUpperCase()));
+      } catch {}
+
+      sectionsList = Array.from(found).sort();
+    }
+
+    // Calculate students and works counts per section
+    const stuCounts = {};
+    const workCounts = {};
+    try {
+      const [uAll, cAll] = await Promise.all([
+        supabase.from('users').select('section').eq('role', 'student'),
+        supabase.from('classworks').select('target_section'),
+      ]);
+
+      (uAll.data || []).forEach((u) => {
+        const sec = (u.section || '').toUpperCase();
+        stuCounts[sec] = (stuCounts[sec] || 0) + 1;
+      });
+
+      (cAll.data || []).forEach((c) => {
+        const sec = (c.target_section || '').toUpperCase();
+        workCounts[sec] = (workCounts[sec] || 0) + 1;
+      });
+    } catch {}
+
+    const sectionsDetail = sectionsList.map((name) => ({
+      name,
+      student_count: stuCounts[name] || 0,
+      work_count: workCounts[name] || 0,
+    }));
+
+    return {
+      sections: sectionsList,
+      default_section: sectionsList[0] || '',
+      sections_detail: sectionsDetail,
+    };
+  },
+
+  createSection: async (name) => {
+    if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+    const cleanName = name.trim().toUpperCase();
+    if (cleanName.length < 2 || cleanName.length > 20) {
+      throw new Error('Section name must be between 2 and 20 characters.');
+    }
+    if (cleanName === 'ALL') {
+      throw new Error('"ALL" is a reserved keyword.');
+    }
+
+    // Try inserting into sections table in Supabase
+    try {
+      const { error } = await supabase.from('sections').insert([{ name: cleanName }]);
+      if (error && error.code === '23505') {
+        throw new Error(`Section "${cleanName}" already exists.`);
+      }
+    } catch (err) {
+      if (err.message && err.message.includes('already exists')) {
+        throw err;
+      }
+    }
+
+    // Save to localStorage so it is remembered seamlessly
+    try {
+      const local = JSON.parse(localStorage.getItem('classwork_sections') || '[]');
+      if (!local.includes(cleanName)) {
+        local.push(cleanName);
+        localStorage.setItem('classwork_sections', JSON.stringify(local));
+      }
+    } catch {}
+
+    const res = await supabaseService.getSections();
+    return {
+      message: `Section "${cleanName}" created successfully!`,
+      section: cleanName,
+      sections: res.sections,
+    };
+  },
+
+  deleteSection: async (name, force = false) => {
+    if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+    const cleanName = name.trim().toUpperCase();
+
+    // Check dependencies
+    const { count: studentCount } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .ilike('section', cleanName)
+      .eq('role', 'student');
+
+    const { count: workCount } = await supabase
+      .from('classworks')
+      .select('*', { count: 'exact', head: true })
+      .ilike('target_section', cleanName);
+
+    if ((studentCount > 0 || workCount > 0) && !force) {
+      const err = new Error(
+        `Cannot delete section "${cleanName}". There are ${studentCount || 0} student(s) and ${workCount || 0} classwork(s) currently assigned to this section.`
+      );
+      err.hasDependencies = true;
+      err.studentCount = studentCount || 0;
+      err.workCount = workCount || 0;
+      throw err;
+    }
+
+    try {
+      await supabase.from('sections').delete().ilike('name', cleanName);
+    } catch {}
+
+    try {
+      const local = JSON.parse(localStorage.getItem('classwork_sections') || '[]');
+      const filtered = local.filter((s) => s.toUpperCase() !== cleanName);
+      localStorage.setItem('classwork_sections', JSON.stringify(filtered));
+    } catch {}
+
+    const res = await supabaseService.getSections();
+    return {
+      message: `Section "${cleanName}" deleted successfully.`,
+      sections: res.sections,
+    };
+  },
+
+  // Student Accounts Management
+  getStudents: async (params = {}) => {
+    if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+    let query = supabase.from('users').select('*').eq('role', 'student');
+    if (params.section && params.section !== 'ALL') {
+      query = query.ilike('section', params.section);
+    }
+    if (params.search) {
+      query = query.or(`roll_number.ilike.%${params.search}%,name.ilike.%${params.search}%`);
+    }
+    query = query.order('roll_number', { ascending: true });
+    const { data: students, error } = await query;
+    if (error) throw new Error(error.message);
+
+    const { data: completions } = await supabase.from('task_completions').select('student_id');
+    const compMap = {};
+    (completions || []).forEach((c) => {
+      compMap[c.student_id] = (compMap[c.student_id] || 0) + 1;
+    });
+
+    return {
+      students: (students || []).map((s) => ({
+        ...s,
+        completed_tasks_count: compMap[s.id] || 0,
+      })),
+    };
+  },
+
+  createStudent: async (studentData) => {
+    if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+    const cleanRoll = studentData.roll_number.trim().toUpperCase();
+
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .ilike('roll_number', cleanRoll)
+      .maybeSingle();
+
+    if (existing) {
+      throw new Error(`A student with Roll Number "${cleanRoll}" is already registered.`);
+    }
+
+    const { data: newStudent, error } = await supabase
+      .from('users')
+      .insert([
+        {
+          roll_number: cleanRoll,
+          name: studentData.name.trim(),
+          password: studentData.password,
+          role: 'student',
+          section: studentData.section || 'CSE-A',
+          year: studentData.year || 3,
+          department: studentData.department || 'Computer Science & Engineering',
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    return {
+      message: `Student account for ${newStudent.name} (${newStudent.roll_number}) created successfully!`,
+      student: {
+        ...newStudent,
+        completed_tasks_count: 0,
+      },
+    };
+  },
+
+  deleteStudent: async (id) => {
+    if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+    await supabase.from('task_completions').delete().eq('student_id', id);
+    const { error } = await supabase.from('users').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return { message: 'Student account deleted successfully.' };
   },
 
   // Fetch Classworks with Completion Status for Student
@@ -402,7 +631,7 @@ export const supabaseService = {
         total_works: totalWorks || 0,
         total_students: totalStudents || 0,
         total_completions: totalCompletions || 0,
-        active_sections: ['CSE-A'],
+        active_sections: [],
       };
     }
   },

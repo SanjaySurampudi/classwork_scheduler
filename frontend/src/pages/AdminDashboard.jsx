@@ -30,7 +30,7 @@ export default function AdminDashboard({ user }) {
     active_sections: [],
   });
   const [loading, setLoading] = useState(true);
-  const [sections, setSections] = useState(['CSE-A']);
+  const [sections, setSections] = useState([]);
   const [selectedSection, setSelectedSection] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);

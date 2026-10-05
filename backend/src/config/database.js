@@ -73,14 +73,13 @@ function initDatabase() {
     );
   `);
 
-  // Ensure default/existing sections are seeded in sections table
+  // Ensure existing sections are seeded in sections table (from existing users/works)
   try {
     const sectionCount = db.prepare('SELECT COUNT(*) as count FROM sections').get().count;
     if (sectionCount === 0) {
-      const defaultSections = ['CSE-A'];
       const userSections = db.prepare("SELECT DISTINCT section FROM users WHERE section IS NOT NULL AND section != '' AND section != 'ALL'").all().map(r => r.section);
       const workSections = db.prepare("SELECT DISTINCT target_section FROM classworks WHERE target_section IS NOT NULL AND target_section != '' AND target_section != 'ALL'").all().map(r => r.target_section);
-      const allSecs = Array.from(new Set([...defaultSections, ...userSections, ...workSections]));
+      const allSecs = Array.from(new Set([...userSections, ...workSections]));
       const insertSec = db.prepare('INSERT OR IGNORE INTO sections (name) VALUES (?)');
       for (const s of allSecs) {
         if (s && typeof s === 'string' && s.trim()) {
@@ -102,158 +101,29 @@ function seedInitialData() {
     return;
   }
 
-  console.log('Seeding initial data for Class Work Scheduler...');
+  console.log('Creating admin account for Class Work Scheduler...');
 
   const adminPass = bcrypt.hashSync('admin123', 10);
-  const studentPass = bcrypt.hashSync('student123', 10);
 
-  // Insert Admin
   const insertUser = db.prepare(`
     INSERT INTO users (roll_number, name, password_hash, role, section, year, department)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
-  const adminResult = insertUser.run(
+  insertUser.run(
     'admin',
-    'Faculty Coordinator / Admin',
+    'Faculty / Admin',
     adminPass,
     'admin',
     'ALL',
     null,
     'Academic Affairs'
   );
-  const adminId = adminResult.lastInsertRowid;
 
-  // Insert Students
-  const students = [
-    { roll: '22A91A0501', name: 'Aarav Sharma', sec: 'CSE-A', year: 3, dept: 'Computer Science & Engineering' },
-    { roll: '22A91A0502', name: 'Ananya Patel', sec: 'CSE-A', year: 3, dept: 'Computer Science & Engineering' },
-    { roll: '22A91A0503', name: 'Rohan Reddy', sec: 'CSE-B', year: 3, dept: 'Computer Science & Engineering' },
-    { roll: '22A91A0504', name: 'Sneha Iyer', sec: 'CSE-B', year: 3, dept: 'Computer Science & Engineering' },
-    { roll: '22A91A0505', name: 'Vikram Rao', sec: 'ECE-A', year: 3, dept: 'Electronics & Communication' },
-    { roll: '22A91A0506', name: 'Pooja Verma', sec: 'IT-A', year: 3, dept: 'Information Technology' },
-  ];
-
-  const studentMap = {};
-  for (const s of students) {
-    const res = insertUser.run(s.roll, s.name, studentPass, 'student', s.sec, s.year, s.dept);
-    studentMap[s.roll] = { id: res.lastInsertRowid, ...s };
-  }
-
-  // Insert sample classworks with relative dates
-  const insertWork = db.prepare(`
-    INSERT INTO classworks (title, subject, faculty_name, description, target_section, category, priority, due_date, resource_url, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const today = new Date();
-  const dateOffset = (days, hours = 17) => {
-    const d = new Date(today.getTime() + days * 24 * 60 * 60 * 1000);
-    d.setHours(hours, 0, 0, 0);
-    return d.toISOString().slice(0, 16);
-  };
-
-  const works = [
-    {
-      title: 'Deadlock Detection & Banker Algorithm Implementation',
-      subject: 'Operating Systems',
-      faculty_name: 'Dr. K. Srinivas',
-      description: 'Implement the Banker’s Algorithm for deadlock avoidance in C/C++ or Python. Submit your source code along with a test report containing 3 test matrices with safe state sequences.',
-      target_section: 'CSE-A',
-      category: 'Lab Task',
-      priority: 'Urgent',
-      due_date: dateOffset(1, 18),
-      resource_url: 'https://en.wikipedia.org/wiki/Banker%27s_algorithm',
-    },
-    {
-      title: 'Normalization (1NF, 2NF, 3NF, BCNF) Problem Set 4',
-      subject: 'Database Management Systems',
-      faculty_name: 'Prof. Sunita Nair',
-      description: 'Solve the 5 relational schema decomposition problems attached in the department portal. Clearly show functional dependencies, candidate keys, and lossless join verification.',
-      target_section: 'ALL',
-      category: 'Assignment',
-      priority: 'High',
-      due_date: dateOffset(2, 23),
-      resource_url: 'https://www.geeksforgeeks.org/database-normalization-introduction/',
-    },
-    {
-      title: 'Greedy vs Dynamic Programming: 0/1 Knapsack Analysis',
-      subject: 'Design & Analysis of Algorithms',
-      faculty_name: 'Dr. M. Venkatesh',
-      description: 'Write a comparative analysis and benchmark report between the Fractional Knapsack (Greedy) and 0/1 Knapsack (DP) algorithms for input size n=1000 items.',
-      target_section: 'CSE-A',
-      category: 'Assignment',
-      priority: 'Medium',
-      due_date: dateOffset(4, 16),
-      resource_url: '',
-    },
-    {
-      title: 'Socket Programming Client-Server Chat Application',
-      subject: 'Computer Networks',
-      faculty_name: 'Prof. Rajesh Kumar',
-      description: 'Build a multi-client TCP chat server using BSD sockets or Python socket library. Demonstrate simultaneous message broadcasting and client disconnect handling.',
-      target_section: 'CSE-B',
-      category: 'Project Work',
-      priority: 'High',
-      due_date: dateOffset(3, 17),
-      resource_url: 'https://docs.python.org/3/library/socket.html',
-    },
-    {
-      title: '8086 Assembly Language Arithmetic & Array Operations',
-      subject: 'Microprocessors & Interfacing',
-      faculty_name: 'Dr. P. Swaminathan',
-      description: 'Assemble and execute MASM/TASM programs to sort an array of 10 hexadecimal numbers in ascending order and compute their parity sum.',
-      target_section: 'ECE-A',
-      category: 'Lab Task',
-      priority: 'Medium',
-      due_date: dateOffset(5, 15),
-      resource_url: '',
-    },
-    {
-      title: 'Software Requirement Specification (SRS) Document for Mini Project',
-      subject: 'Software Engineering',
-      faculty_name: 'Prof. Anitha Rao',
-      description: 'Submit IEEE 830 compliant SRS document for your semester mini-project, including Functional & Non-functional requirements, Use Case diagrams, and Data Flow Diagrams.',
-      target_section: 'IT-A',
-      category: 'Homework',
-      priority: 'Normal',
-      due_date: dateOffset(6, 20),
-      resource_url: '',
-    },
-  ];
-
-  const workIds = [];
-  for (const w of works) {
-    const res = insertWork.run(
-      w.title,
-      w.subject,
-      w.faculty_name,
-      w.description,
-      w.target_section,
-      w.category,
-      w.priority,
-      w.due_date,
-      w.resource_url,
-      adminId
-    );
-    workIds.push(res.lastInsertRowid);
-  }
-
-  // Pre-seed some completions so admin can immediately observe real student completions
-  const insertCompletion = db.prepare(`
-    INSERT INTO task_completions (classwork_id, student_id, student_roll_number, student_name, student_section, notes)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-
-  // Aarav completed work 1 and work 2
-  insertCompletion.run(workIds[0], studentMap['22A91A0501'].id, '22A91A0501', 'Aarav Sharma', 'CSE-A', 'Completed C++ code & submitted report');
-  insertCompletion.run(workIds[1], studentMap['22A91A0501'].id, '22A91A0501', 'Aarav Sharma', 'CSE-A', 'Finished all 5 normalization proofs');
-
-  // Rohan completed work 2
-  insertCompletion.run(workIds[1], studentMap['22A91A0503'].id, '22A91A0503', 'Rohan Reddy', 'CSE-B', 'Completed assignment problems');
-
-  console.log('Sample database successfully initialized and seeded!');
+  console.log('Admin account created. You can now add sections and student logins from the Admin Dashboard.');
 }
+
+
 
 initDatabase();
 
