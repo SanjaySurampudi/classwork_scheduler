@@ -52,19 +52,6 @@ export default function LoginPage({ onLoginSuccess, onNavigateRegister }) {
     }
   };
 
-  // 1-Click quick fill helpers
-  const fillSample = (role, id, pass) => {
-    setError('');
-    if (role === 'student') {
-      setActiveTab('student');
-      setRollNumber(id);
-      setPassword(pass);
-    } else {
-      setActiveTab('admin');
-      setAdminUsername(id);
-      setPassword(pass);
-    }
-  };
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 sm:p-6 bg-slate-50">
@@ -226,44 +213,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateRegister }) {
               </form>
             )}
 
-            {/* Quick Autofill Helper inside Card */}
-            <div className="mt-6 pt-4 border-t border-slate-100 text-xs">
-              <span className="font-semibold text-slate-500 block mb-2">Try Demo Accounts:</span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => fillSample('student', '22A91A0501', 'student123')}
-                  className="px-2.5 py-1.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-lg text-slate-700 text-left transition-colors"
-                >
-                  <strong className="block text-indigo-600 font-mono text-[11px]">22A91A0501</strong>
-                  <span className="text-[10px] text-slate-500">Aarav (CSE-A)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillSample('student', '22A91A0503', 'student123')}
-                  className="px-2.5 py-1.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-lg text-slate-700 text-left transition-colors"
-                >
-                  <strong className="block text-indigo-600 font-mono text-[11px]">22A91A0503</strong>
-                  <span className="text-[10px] text-slate-500">Rohan (CSE-B)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillSample('student', '22A91A0505', 'student123')}
-                  className="px-2.5 py-1.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-lg text-slate-700 text-left transition-colors"
-                >
-                  <strong className="block text-indigo-600 font-mono text-[11px]">22A91A0505</strong>
-                  <span className="text-[10px] text-slate-500">Vikram (ECE-A)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillSample('admin', 'admin', 'admin123')}
-                  className="px-2.5 py-1.5 bg-slate-50 hover:bg-amber-50 border border-slate-200 rounded-lg text-slate-700 text-left transition-colors"
-                >
-                  <strong className="block text-amber-700 font-mono text-[11px]">admin</strong>
-                  <span className="text-[10px] text-slate-500">Faculty Admin</span>
-                </button>
-              </div>
-            </div>
+
           </div>
         </div>
       </div>

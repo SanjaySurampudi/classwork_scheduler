@@ -10,12 +10,16 @@ import {
   Sparkles,
   ClipboardList,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  UserPlus,
+  Settings
 } from 'lucide-react';
 import { api } from '../services/api';
 import TaskCard from '../components/TaskCard';
 import AdminTaskModal from '../components/AdminTaskModal';
 import StudentRosterModal from '../components/StudentRosterModal';
+import ManageSectionsModal from '../components/ManageSectionsModal';
+import ManageStudentsModal from '../components/ManageStudentsModal';
 
 export default function AdminDashboard({ user }) {
   const [works, setWorks] = useState([]);
@@ -30,16 +34,22 @@ export default function AdminDashboard({ user }) {
   const [selectedSection, setSelectedSection] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSectionsModalOpen, setIsSectionsModalOpen] = useState(false);
+  const [isStudentsModalOpen, setIsStudentsModalOpen] = useState(false);
   const [editingWork, setEditingWork] = useState(null);
   const [rosterWorkId, setRosterWorkId] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
 
-  useEffect(() => {
+  const reloadSections = () => {
     api.getSections().then((res) => {
       if (res.sections && res.sections.length > 0) {
         setSections(res.sections);
       }
     }).catch(() => {});
+  };
+
+  useEffect(() => {
+    reloadSections();
   }, []);
 
   const showToast = (msg, type = 'success') => {
@@ -158,13 +168,31 @@ export default function AdminDashboard({ user }) {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition-all cursor-pointer hover:scale-[1.02]"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Post New Class Work</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => setIsSectionsModalOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-bold text-xs border border-slate-700 shadow-sm transition-all cursor-pointer hover:scale-[1.02]"
+          >
+            <Layers className="w-4 h-4 text-indigo-400" />
+            <span>Sections</span>
+          </button>
+
+          <button
+            onClick={() => setIsStudentsModalOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-bold text-xs border border-slate-700 shadow-sm transition-all cursor-pointer hover:scale-[1.02]"
+          >
+            <UserPlus className="w-4 h-4 text-emerald-400" />
+            <span>Student Logins</span>
+          </button>
+
+          <button
+            onClick={handleOpenCreate}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all cursor-pointer hover:scale-[1.02]"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Post Class Work</span>
+          </button>
+        </div>
       </div>
 
       {/* Overview Stat Cards */}
@@ -184,17 +212,24 @@ export default function AdminDashboard({ user }) {
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
+        <div
+          onClick={() => setIsStudentsModalOpen(true)}
+          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between cursor-pointer hover:border-emerald-300 hover:shadow-xs transition-all group"
+          title="Click to manage student accounts and logins"
+        >
           <div>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Enrolled Students
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider group-hover:text-emerald-700 transition-colors">
+                Enrolled Students
+              </span>
+              <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Manage Logins</span>
+            </div>
             <div className="text-2xl font-extrabold text-slate-900 mt-1">
               {stats.total_students || 0}
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">Active student roll numbers</p>
+            <p className="text-xs text-slate-400 mt-0.5">Active student roll numbers & logins</p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
             <Users className="w-6 h-6" />
           </div>
         </div>
@@ -220,7 +255,7 @@ export default function AdminDashboard({ user }) {
         {/* Section Selector */}
         <div className="flex items-center gap-2 w-full md:w-auto">
           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Section:</span>
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl flex-wrap">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl flex-wrap gap-1">
             {['ALL', ...sections].map((sec) => (
               <button
                 key={sec}
@@ -234,6 +269,14 @@ export default function AdminDashboard({ user }) {
                 {sec === 'ALL' ? 'All Sections' : sec}
               </button>
             ))}
+            <button
+              onClick={() => setIsSectionsModalOpen(true)}
+              title="Add or delete class sections"
+              className="px-2 py-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:bg-white rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 ml-1"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Add / Manage Sections</span>
+            </button>
           </div>
         </div>
 
@@ -310,6 +353,27 @@ export default function AdminDashboard({ user }) {
         isOpen={Boolean(rosterWorkId)}
         onClose={() => setRosterWorkId(null)}
         workId={rosterWorkId}
+      />
+
+      {/* Manage Sections Modal */}
+      <ManageSectionsModal
+        isOpen={isSectionsModalOpen}
+        onClose={() => setIsSectionsModalOpen(false)}
+        onSectionsUpdated={() => {
+          reloadSections();
+          loadData();
+          showToast('Sections updated successfully.');
+        }}
+      />
+
+      {/* Manage Students Modal */}
+      <ManageStudentsModal
+        isOpen={isStudentsModalOpen}
+        onClose={() => setIsStudentsModalOpen(false)}
+        onStudentsUpdated={() => {
+          loadData();
+          showToast('Student accounts updated successfully.');
+        }}
       />
     </div>
   );

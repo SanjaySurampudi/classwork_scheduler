@@ -5,6 +5,8 @@ const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const workRoutes = require('./routes/workRoutes');
+const sectionRoutes = require('./routes/sectionRoutes');
+const studentRoutes = require('./routes/studentRoutes');
 const db = require('./config/database');
 
 const app = express();
@@ -32,6 +34,8 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/classworks', workRoutes);
+app.use('/api/sections', sectionRoutes);
+app.use('/api/students', studentRoutes);
 
 // Serve frontend static files if built (Production deployment)
 const frontendDist = path.join(__dirname, '../../frontend/dist');

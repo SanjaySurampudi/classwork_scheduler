@@ -16,6 +16,15 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
 function initDatabase() {
+  // Create sections table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   // Create users table
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -63,6 +72,25 @@ function initDatabase() {
       UNIQUE(classwork_id, student_id)
     );
   `);
+
+  // Ensure default/existing sections are seeded in sections table
+  try {
+    const sectionCount = db.prepare('SELECT COUNT(*) as count FROM sections').get().count;
+    if (sectionCount === 0) {
+      const defaultSections = ['CSE-A'];
+      const userSections = db.prepare("SELECT DISTINCT section FROM users WHERE section IS NOT NULL AND section != '' AND section != 'ALL'").all().map(r => r.section);
+      const workSections = db.prepare("SELECT DISTINCT target_section FROM classworks WHERE target_section IS NOT NULL AND target_section != '' AND target_section != 'ALL'").all().map(r => r.target_section);
+      const allSecs = Array.from(new Set([...defaultSections, ...userSections, ...workSections]));
+      const insertSec = db.prepare('INSERT OR IGNORE INTO sections (name) VALUES (?)');
+      for (const s of allSecs) {
+        if (s && typeof s === 'string' && s.trim()) {
+          insertSec.run(s.trim().toUpperCase());
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error initializing sections table:', err);
+  }
 
   // Seed sample data if empty
   seedInitialData();

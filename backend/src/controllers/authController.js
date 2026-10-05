@@ -182,8 +182,11 @@ exports.getCurrentUser = (req, res) => {
 
 exports.getSections = (req, res) => {
   try {
-    return res.json({ sections: ACTIVE_SECTIONS, default_section: DEFAULT_SECTION });
+    const rows = db.prepare('SELECT name FROM sections ORDER BY name ASC').all();
+    const sectionNames = rows.length > 0 ? rows.map(r => r.name) : ACTIVE_SECTIONS;
+    return res.json({ sections: sectionNames, default_section: sectionNames[0] || 'CSE-A' });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to retrieve sections.' });
   }
 };
+

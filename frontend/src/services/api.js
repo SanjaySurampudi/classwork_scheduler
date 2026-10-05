@@ -79,7 +79,38 @@ export const api = {
     isSupabaseConfigured ? supabaseService.getProfile() : request('/auth/me'),
 
   getSections: () =>
-    isSupabaseConfigured ? supabaseService.getSections() : request('/auth/sections'),
+    isSupabaseConfigured ? supabaseService.getSections() : request('/sections'),
+
+  createSection: (name) =>
+    request('/sections', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  deleteSection: (name, force = false) =>
+    request(`/sections/${encodeURIComponent(name)}${force ? '?force=true' : ''}`, {
+      method: 'DELETE',
+    }),
+
+  // Students (Admin management)
+  getStudents: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.section) query.append('section', params.section);
+    if (params.search) query.append('search', params.search);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return request(`/students${queryString}`);
+  },
+
+  createStudent: (studentData) =>
+    request('/students', {
+      method: 'POST',
+      body: JSON.stringify(studentData),
+    }),
+
+  deleteStudent: (id) =>
+    request(`/students/${id}`, {
+      method: 'DELETE',
+    }),
 
   // Classworks
   getClassworks: (params = {}) => {

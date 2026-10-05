@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api, authStorage } from './services/api';
 import Navbar from './components/Navbar';
-import QuickDemoBanner from './components/QuickDemoBanner';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import StudentDashboard from './pages/StudentDashboard';
@@ -48,24 +47,6 @@ export default function App() {
     setCurrentView('login');
   };
 
-  // 1-Click quick account switcher for easy review
-  const handleQuickLogin = async (acc) => {
-    try {
-      let res;
-      if (acc.role === 'admin') {
-        res = await api.adminLogin(acc.roll, acc.pass);
-      } else {
-        res = await api.studentLogin(acc.roll, acc.pass);
-      }
-      authStorage.setToken(res.token);
-      authStorage.setUser(res.user);
-      setCurrentUser(res.user);
-    } catch (err) {
-      console.error('Quick login failed:', err);
-      alert(err.message || 'Quick login failed.');
-    }
-  };
-
   if (loadingInitial) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -76,9 +57,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white">
-      {/* Quick Test Accounts Banner */}
-      <QuickDemoBanner onQuickLogin={handleQuickLogin} currentUser={currentUser} />
-
       {/* Main Navbar */}
       <Navbar user={currentUser} onLogout={handleLogout} />
 
